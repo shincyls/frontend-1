@@ -1,4 +1,4 @@
-.App {
+/* .App {
   text-align: center;
 }
 
@@ -34,5 +34,41 @@
   }
   to {
     transform: rotate(360deg);
+  }
+} */
+
+/* Add these styles to your CSS file (e.g., App.css) */
+
+.typing {
+  display: inline-block;
+  overflow: hidden;
+  border-right: 0.15em solid orange;
+  white-space: nowrap;
+  width: 0;
+  animation: typing 3s steps(30) forwards, blink 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.blink {
+  animation: blinking 1s step-end infinite;
+}
+
+@keyframes blinking {
+  50% {
+    visibility: hidden;
   }
 }

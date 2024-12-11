@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
+import anime from 'animejs';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import './App.css';
 
 function App() {
   const canvasRef = useRef(null);
@@ -26,71 +26,50 @@ function App() {
       sentence: "Here comes the video!",
       textPosition: "top-right",
       textAnimation: "blink",
-      // original link not valid, change to actual link
       media: "https://media.gettyimages.com/id/1069900546/video/good-looking-young-woman-in-casual-clothing-is-painting-in-workroom-then-looking-at-picture.mp4?s=mp4-640x640-gi&k=20&c=yXu7DFG4LhV_ur0oqb59owGqDkVJKzlcWVF-V2l5sM0=",
       duration: 5,
     }
   ];
 
   useEffect(() => {
+  if (playState === 1) {
+    console.log(currentScene);
+    if (currentScene >= scenes.length) {
+      setPlayState(0);
+      return;
+    }
+    stopFlag.current = false;
+    playScene(scenes[currentScene]);
+  } else if (playState === 0) {
+    stopFlag.current = true;
+    cancelAnimationFrame(requestId.current);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-  
-    switch (playState) {
-      // Play Scene
-      case 1:
-        if (currentScene >= scenes.length) {
-          setPlayState(0);
-          return;
-        }
-        stopFlag.current = false;
-        playScene(scenes[currentScene]);
-      break;
-  
-      // Stop Scene
-      case 0:
-        stopFlag.current = true;
-        cancelAnimationFrame(requestId.current);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        setCurrentSecond(0);
-        setCurrentScene(0);
-      break;
-  
-      // Pause Scene
-      case 2:
-        stopFlag.current = true;
-        cancelAnimationFrame(requestId.current);
-        videoRef.current?.pause();
-      break;
-  
-      // Previous Scene
-      case 4:
-        if (currentScene > 0) {
-          setCurrentScene((prevScene) => prevScene - 1);
-          setCurrentSecond(0);
-          setPlayState(1);
-        } else {
-          alert("first scene.");
-        }
-      break;
-  
-      // Next Scene
-      case 5:
-        if (currentScene < scenes.length - 1) {
-          setCurrentScene((prevScene) => prevScene + 1);
-          setCurrentSecond(0);
-          setPlayState(1);
-        } else {
-          alert("last scene.");
-        }
-      break;
-  
-      default:
-        console.warn("Unknown playState:", playState);
-      break;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setCurrentSecond(0);
+    setCurrentScene(0); 
+  } else if (playState === 2) {
+    stopFlag.current = true;
+    cancelAnimationFrame(requestId.current);
+    videoRef.current?.pause();
+  } else if (playState === 4) {  // Previous scene button logic
+    if (currentScene > 0) {
+      setCurrentScene((prevScene) => prevScene - 1);
+      setCurrentSecond(0);
+      setPlayState(1);
+    } else {
+      alert("first scene.");
     }
+  } else if (playState === 5) {  // Next scene button logic
+    if (currentScene < scenes.length - 1) {
+      setCurrentScene((prevScene) => prevScene + 1);
+      setCurrentSecond(0);
+      setPlayState(1);
+    } else {
+      alert("last scene.");
+    }
+  }
 }, [playState, currentScene]);
-  
 
 const playScene = (scene) => {
   const canvas = canvasRef.current;
@@ -98,40 +77,6 @@ const playScene = (scene) => {
   const baseUrl = scene.media.split("?")[0];
   const lastSegment = baseUrl.split("/").pop();
   const format = lastSegment.split(".").pop().toLowerCase();
-  const maxScenes = scenes.length;
-
-  const drawSentence = (text, position, effect) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d"); // Ensure ctx is defined here
-  
-    const { width, height } = canvas;
-    const fontSize = 24;
-    ctx.font = `${fontSize}px Arial`;
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-  
-    let x = width / 2;
-    let y = height / 2;
-  
-    switch (position) {
-      case "top-right":
-        x = width - 100;
-        y = 50;
-        ctx.textAlign = "right";
-        break;
-      case "middle-center":
-        x = width / 2;
-        y = height / 2;
-        break;
-      default:
-        x = width / 2;
-        y = height / 2;
-    }
-
-    ctx.fillText(text, x, y);
-    
-  };
-  
 
   if (scene.index !== currentScene) {
     setCurrentScene(scene.index);
@@ -151,23 +96,20 @@ const playScene = (scene) => {
       if (playState === 1 && !video.ended) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // display the sentence
-        drawSentence(scene.sentence, scene.textPosition, scene.textAnimation);
         setCurrentSecond(Math.floor(video.currentTime));
-
         // Check if video has reached scene duration
-        if (video.currentTime >= scene.duration) {
+        if ((video.currentTime >= scene.duration)) {
           video.pause();
           cancelAnimationFrame(requestId.current);
           setCurrentSecond(scene.duration);
-
-          if (scene.index + 1 < maxScenes) {
+          // Stop playback if the last scene is reached
+          if (currentScene == scenes.length-1) {
+            setPlayState(0); // Stop playback
+          } else {
+            // Automatically transition to the next scene
             setCurrentScene(currentScene + 1);
             setCurrentSecond(0);
-            playScene(scenes[currentScene + 1]);
-          } else {
-            setPlayState(0); // Stop playback
+            playScene(scenes[currentScene]);
           }
         } else {
           requestId.current = requestAnimationFrame(drawFrame);
@@ -179,38 +121,37 @@ const playScene = (scene) => {
     const img = new Image();
     img.src = scene.media;
     const startTime = performance.now();
-
     img.onload = () => {
       const renderImage = (timestamp) => {
         const elapsed = (timestamp - startTime) / 1000;
-
         if (elapsed < scene.duration && playState === 1) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          // Draw the text
-          drawSentence(scene.sentence, scene.textPosition, scene.textAnimation);
-
           setCurrentSecond(Math.floor(elapsed));
           requestId.current = requestAnimationFrame(renderImage);
         } else {
           cancelAnimationFrame(requestId.current);
-
-          if (currentScene + 1 < maxScenes) {
-            setCurrentScene((prevScene) => prevScene + 1);
+          // Stop playback if the last scene is reached
+          if (currentScene + 1 >= scenes.length) {
+            setPlayState(0); // Stop playback
+          } else {
+            // Automatically transition to the next scene or stop if it's the last scene
+            setCurrentScene(prevScene => {
+              if (prevScene + 1 >= scenes.length) {
+                return prevScene;
+              } else {
+                return prevScene + 1;
+              }
+            });
             setCurrentSecond(0);
             playScene(scenes[currentScene + 1]);
-          } else {
-            setPlayState(0);
           }
         }
       };
-
       requestId.current = requestAnimationFrame(renderImage);
     };
   }
-};
-
+};    
 
   return (
     <div className="App container text-center mt-4">
@@ -245,7 +186,10 @@ const playScene = (scene) => {
             <i className="fas fa-step-forward"></i>
           </button>
           <div className="mt-2">
-            <strong>Scene: </strong> {currentScene} <strong>/ Second: </strong> {currentSecond}
+            <strong>Current Second: </strong>
+            {currentSecond} <br />
+            <strong>Current Scene: </strong>
+            {currentScene}
           </div>
         </div>
       </div>
